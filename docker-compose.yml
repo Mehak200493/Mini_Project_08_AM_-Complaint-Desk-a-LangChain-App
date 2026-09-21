@@ -1,0 +1,11 @@
+services:
+  complaint-desk:
+    build: .
+    container_name: complaint-desk-fintech
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

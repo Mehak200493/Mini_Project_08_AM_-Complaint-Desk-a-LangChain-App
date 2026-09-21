@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" role="img" aria-label="XYZ Finance Complaint Desk">
+  <rect width="640" height="160" rx="18" fill="#0b5fff"/>
+  <g fill="#ffffff">
+    <path d="M60 104h64v10H60zM66 60h52v8H66zM72 70h8v30h-8zM90 70h8v30h-8zM108 70h8v30h-8zM92 38l40 18H52z"/>
+  </g>
+  <text x="160" y="80" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700" fill="#ffffff">XYZ Finance</text>
+  <text x="162" y="118" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#cfe0ff">AI Complaint Resolution Desk</text>
+</svg>
