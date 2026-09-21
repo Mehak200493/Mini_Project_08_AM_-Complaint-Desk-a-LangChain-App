@@ -45,8 +45,26 @@ def normalize_label(raw: str, allowed: Sequence[str]) -> str | None:
     return None
 
 
-def _build_llm(settings: Settings) -> Runnable:
-    from langchain_openai import ChatOpenAI  # imported lazily: offline mode needs no key
+def build_llm(settings: Settings, provider: str | None = None) -> Runnable:
+    """Create the chat model. This is the ONE place where the provider is chosen.
+
+    Swapping OpenAI-compatible hosting for a local model is a one-line change:
+
+        ChatOpenAI(model=..., temperature=0.3, base_url=...)   # hosted API
+        ChatOllama(model="mistral", temperature=0.3)           # local, via Ollama
+    """
+    provider = (provider or settings.llm_provider).lower()
+    if provider == "ollama":
+        from langchain_ollama import ChatOllama  # lazy import: only needed for local models
+
+        return ChatOllama(
+            model=settings.ollama_model,
+            temperature=settings.temperature,
+            base_url=settings.ollama_base_url,
+            client_kwargs={"timeout": 120},  # local models can be slow on CPU
+        )
+
+    from langchain_openai import ChatOpenAI  # lazy import: offline mode needs no key
 
     return ChatOpenAI(
         model=settings.model,
@@ -73,7 +91,7 @@ class ComplaintPipeline:
             if llm is not None:
                 self.llm = llm
             elif self.settings.ai_enabled:
-                self.llm = _build_llm(self.settings)
+                self.llm = build_llm(self.settings)
 
         self.chain: Runnable | None = None
         self.insights_chain: Runnable | None = None

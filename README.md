@@ -207,10 +207,48 @@ The project is designed for **GPT-4o Mini**, but it also runs on Groq's free tie
 ```dotenv
 OPENAI_API_KEY=gsk_your_groq_key
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
-OPENAI_MODEL=llama-3.1-8b-instant
+OPENAI_MODEL=openai/gpt-oss-20b
 ```
 
 Keep exactly one line per setting in `.env` (a duplicated name is overridden by the last line).
+
+### Run a local model with Ollama (Activity B)
+
+The provider is chosen in one place, `build_llm()` in `complaint_desk/chains.py`. Swapping the hosted API for a
+local model is a one-line change:
+
+```diff
+- llm = ChatOpenAI(model="openai/gpt-oss-20b", temperature=0.3, base_url="https://api.groq.com/openai/v1")
++ llm = ChatOllama(model="mistral", temperature=0.3)
+```
+
+Without touching the code, set this in `.env`:
+
+```dotenv
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=mistral
+```
+
+Then install Ollama from <https://ollama.com>, download the model once and start the app:
+
+```bash
+ollama pull mistral
+python scripts/check_llm.py      # should end with "All good"
+streamlit run app.py
+```
+
+### Benchmark: hosted API vs local Ollama
+
+`scripts/benchmark_llms.py` runs the same 10 frozen test complaints (with gold labels) through both back-ends and
+measures triage accuracy, reply quality (7 automatic checks), latency, token usage and cost per 1,000 requests.
+
+```bash
+python scripts/benchmark_llms.py --hardware "Ryzen 5, 16 GB RAM, no GPU"
+```
+
+It writes `reports/ACTIVITY_B_COMPARISON.html` (open it and use **Print -> Save as PDF** for the one-page
+comparison), plus a Markdown version and a per-complaint appendix. Prices are assumptions you can override with
+`--price-in`, `--price-out` and `--server-monthly-usd`.
 
 ### Configuration
 
@@ -218,7 +256,10 @@ Keep exactly one line per setting in `.env` (a duplicated name is overridden by 
 |----------|---------|-------------|
 | `OPENAI_API_KEY` | *(empty)* | Enables AI mode |
 | `OPENAI_BASE_URL` | *(empty)* | Optional. Use any OpenAI-compatible API, e.g. `https://api.groq.com/openai/v1` |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Chat model |
+| `LLM_PROVIDER` | `openai` | `openai` (any OpenAI-compatible API) or `ollama` (local model) |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Chat model for the hosted API |
+| `OLLAMA_MODEL` | `mistral` | Local model used when `LLM_PROVIDER=ollama` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Where Ollama is running |
 | `LLM_TEMPERATURE` | `0.3` | Sampling temperature |
 | `COMPANY_NAME` | `XYZ Finance` | Branding used in replies and UI |
 | `DB_PATH` | `data/complaints.db` | SQLite file |
@@ -236,7 +277,7 @@ Keep exactly one line per setting in `.env` (a duplicated name is overridden by 
    OPENAI_API_KEY = "sk-..."
    # For Groq also add:
    # OPENAI_BASE_URL = "https://api.groq.com/openai/v1"
-   # OPENAI_MODEL = "llama-3.1-8b-instant"
+   # OPENAI_MODEL = "openai/gpt-oss-20b"
    ```
 4. Deploy, then copy the live URL into the top of this README.
 
@@ -282,13 +323,16 @@ Complaint-Desk-FinTech/
 ├── complaint_desk/
 │   ├── config.py              # settings and domain constants
 │   ├── prompts.py             # all LangChain prompt templates
-│   ├── chains.py              # LCEL pipeline + fallback logic
+│   ├── chains.py              # LCEL pipeline, build_llm() provider switch, fallback logic
+│   ├── benchmark.py           # test set, scoring and report rendering for Activity B
 │   ├── fallback.py            # rule-based offline engine
 │   ├── validators.py          # input validation, card masking
 │   ├── storage.py             # SQLite store, complaint IDs
 │   └── analytics.py           # metrics, trends, insights
 ├── scripts/seed_demo_data.py  # sample data generator
-├── scripts/check_llm.py       # LLM connection check
+├── scripts/check_llm.py       # LLM connection check (hosted or Ollama)
+├── scripts/benchmark_llms.py  # Activity B: hosted vs local comparison
+├── reports/                   # benchmark output (one-page comparison)
 ├── tests/                     # unit + Streamlit UI tests
 ├── screenshots/               # README images
 ├── assets/logo.svg

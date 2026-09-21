@@ -40,6 +40,9 @@ def _load_streamlit_secrets() -> None:
             "OPENAI_API_KEY",
             "OPENAI_BASE_URL",
             "OPENAI_MODEL",
+            "LLM_PROVIDER",
+            "OLLAMA_MODEL",
+            "OLLAMA_BASE_URL",
             "LLM_TEMPERATURE",
             "COMPANY_NAME",
             "SUPPORT_PIN",
@@ -67,7 +70,7 @@ def get_pipeline(cache_key: tuple, _settings: Settings) -> ComplaintPipeline:
 
 store = get_store(str(settings.db_path))
 pipeline = get_pipeline(
-    (settings.ai_enabled, settings.model, settings.temperature, settings.company_name),
+    (settings.ai_enabled, settings.llm_provider, settings.active_model, settings.temperature, settings.company_name),
     settings,
 )
 
@@ -175,9 +178,10 @@ def render_sidebar() -> str:
         st.divider()
 
         if pipeline.ai_enabled:
-            st.success(f"AI mode · {settings.model} (temp {settings.temperature})", icon="✅")
+            where = "local" if settings.llm_provider == "ollama" else "hosted"
+            st.success(f"AI mode · {settings.active_model} ({where}, temp {settings.temperature})", icon="✅")
         else:
-            st.warning("Offline demo mode · add OPENAI_API_KEY to enable AI", icon="⚠️")
+            st.warning("Offline demo mode · add an API key (or set LLM_PROVIDER=ollama) to enable AI", icon="⚠️")
         st.caption(f"v{__version__}")
     return page
 
@@ -204,7 +208,7 @@ def render_message(msg: dict) -> None:
         st.markdown(msg["content"].replace("\n", "  \n"))
         if meta.get("warning"):
             st.warning(meta["warning"])
-        engine = settings.model if meta["mode"] == "ai" else "rule-based engine"
+        engine = settings.active_model if meta["mode"] == "ai" else "rule-based engine"
         st.caption(f"Submitted {meta['time']} · processed by {engine}")
 
 
@@ -434,7 +438,7 @@ def page_insights() -> None:
     if df.empty:
         return
     if not pipeline.ai_enabled:
-        st.info("Add an OPENAI_API_KEY to generate an AI-written management summary.")
+        st.info("Enable an LLM (API key or local Ollama) to generate an AI-written management summary.")
         return
     if st.button("Generate AI summary", type="primary"):
         try:

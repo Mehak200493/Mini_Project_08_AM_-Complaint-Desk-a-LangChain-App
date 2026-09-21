@@ -48,15 +48,29 @@ class Settings:
     offline_mode: bool
     support_pin: str
     base_url: str = ""  # e.g. https://api.groq.com/openai/v1 for OpenAI-compatible providers
+    llm_provider: str = "openai"  # "openai" (any OpenAI-compatible API) or "ollama" (local)
+    ollama_model: str = "mistral"
+    ollama_base_url: str = "http://localhost:11434"
 
     @property
     def ai_enabled(self) -> bool:
-        """True when the LLM pipeline can be used."""
-        return bool(self.openai_api_key) and not self.offline_mode
+        """True when the LLM pipeline can be used (Ollama needs no API key)."""
+        if self.offline_mode:
+            return False
+        return True if self.llm_provider == "ollama" else bool(self.openai_api_key)
+
+    @property
+    def active_model(self) -> str:
+        """Name of the model that is actually used for the selected provider."""
+        return self.ollama_model if self.llm_provider == "ollama" else self.model
 
 
 def get_settings() -> Settings:
     """Read settings from the environment (and .env) on every call."""
+    provider = os.getenv("LLM_PROVIDER", "openai").strip().lower()
+    if provider not in {"openai", "ollama"}:
+        provider = "openai"
+
     db_path = Path(os.getenv("DB_PATH", "data/complaints.db"))
     if not db_path.is_absolute():
         db_path = BASE_DIR / db_path
@@ -71,4 +85,8 @@ def get_settings() -> Settings:
         offline_mode=_truthy(os.getenv("OFFLINE_MODE")),
         support_pin=os.getenv("SUPPORT_PIN", "").strip(),
         base_url=os.getenv("OPENAI_BASE_URL", "").strip(),
+        llm_provider=provider,
+        ollama_model=os.getenv("OLLAMA_MODEL", "mistral").strip() or "mistral",
+        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").strip()
+        or "http://localhost:11434",
     )
